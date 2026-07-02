@@ -259,21 +259,36 @@ export default function activate(pi, ctx) {
         if (ev?.type === "text_delta" && typeof ev.delta === "string") {
             send({ type: "delta", text: ev.delta });
         }
-        // Thinking: pi's message content carries `{type:"thinking", thinking}` blocks
-        // (see docs/session-format.md). Diff against what we've sent and stream the
-        // new suffix — robust to whatever the per-token stream event shape is.
+        // A per-token thinking/reasoning stream event, whatever its exact shape.
+        if (ev && ev.type !== "text_delta" && /think|reason/i.test(String(ev.type ?? ""))) {
+            const t = ev.delta ?? ev.thinking ?? ev.reasoning ?? ev.text;
+            if (typeof t === "string" && t.length)
+                send({ type: "thinking", text: t });
+        }
+        // Also diff the message's thinking/reasoning content blocks (documented shape
+        // {type:"thinking", thinking}), covering providers that only expose it there.
         const content = event?.message?.content;
         if (Array.isArray(content)) {
             let thinking = "";
             for (const block of content) {
-                if (block?.type === "thinking" && typeof block.thinking === "string") {
+                if (!block)
+                    continue;
+                if (block.type === "thinking" && typeof block.thinking === "string")
                     thinking += block.thinking;
+                else if (/think|reason/i.test(String(block.type ?? "")) && typeof (block.thinking ?? block.text ?? block.reasoning) === "string") {
+                    thinking += (block.thinking ?? block.text ?? block.reasoning);
                 }
             }
             if (thinking.length > sentThinkingLen) {
                 send({ type: "thinking", text: thinking.slice(sentThinkingLen) });
                 sentThinkingLen = thinking.length;
             }
+        }
+        // Diagnostic (PIDEV_DEBUG=1): dump the real event shape so we can pin the
+        // thinking representation for this provider/model.
+        if (process.env.PIDEV_DEBUG) {
+            const blocks = Array.isArray(content) ? content.map((b) => b?.type).join(",") : typeof content;
+            debug(`msg-update evType=${ev?.type} evKeys=[${ev ? Object.keys(ev).join(",") : ""}] blocks=[${blocks}]`);
         }
     });
     // Tool lifecycle markers → device.
