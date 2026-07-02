@@ -1,0 +1,20 @@
+{
+  "name": "pi-remote-control",
+  "version": "0.1.0",
+  "description": "pi.dev extension: bridge a live pi session to the remote-control relay",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "keywords": ["pi-package", "pi-extension"],
+  "pi": {
+    "extensions": ["./dist/index.js"]
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "typescript": "^5.6.0"
+  }
+}
