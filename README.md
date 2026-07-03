@@ -12,6 +12,12 @@ separate (private) repository operated by Clever Cloud. Signing in requires a
 ## Install
 
 ```
+pi install npm:@clevercloud/pi-remote-control
+```
+
+or straight from this repo:
+
+```
 pi install git:github.com/CleverCloud/pi-remote-control
 ```
 

@@ -1,0 +1,37 @@
+# Publishes @clevercloud/pi-remote-control to npm when a version tag (v1.2.3)
+# is pushed. The tag must match package.json's version, and the committed
+# dist/ must match a fresh build (it is what `pi install git:` users run).
+#
+# Requires the NPM_TOKEN repo secret: an npm *automation* token with publish
+# rights on the @clevercloud scope. Provenance is attested via the job's OIDC
+# token (id-token: write + publishConfig.provenance).
+name: npm-publish
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write # npm provenance attestation
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: tag matches package.json version
+        run: |
+          PKG="$(node -p "require('./package.json').version")"
+          TAG="${GITHUB_REF_NAME#v}"
+          [ "$PKG" = "$TAG" ] || { echo "tag v$TAG != package.json version $PKG"; exit 1; }
+      - run: npm ci
+      - run: npm run build
+      - name: committed dist matches the build
+        run: git diff --exit-code dist/
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
